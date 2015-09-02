@@ -95,11 +95,86 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
       }
     }
   }
-
-
-  "GET /station/near/<lat>/<long>" - {
-    "List nearest locations with current count of bikes per station - need a way to bootstrap this" in {}
+  """
+    |AS a customer
+    |I WANT to hire a bike near to me, and return it to a different location
+    |SO THAT I can get somewhere
+  """.stripMargin - {
+    "GET /station/near/<lat>/<long>" - {
+      "List locations within 0.01 deg of current location, with count of bikes per station" in {
+        GET("/station/12345").body should be(Json.parse("""{
+                                                           "name": "South Road",
+                                                           "location": {
+                                                             "lat": 3.23,
+                                                             "long": 40.21
+                                                           },
+                                                           "availableBikes": [
+                                                             "001","003"
+                                                           ]
+                                                         }"""))
+        GET("/station/67890").body should be(Json.parse("""{
+                                                           "name": "East Road",
+                                                           "location": {
+                                                             "lat": 3.03,
+                                                             "long": 40.01
+                                                           },
+                                                           "availableBikes": [
+                                                             "005"
+                                                           ]
+                                                         }"""))
+        GET("/station/near/3.04/40.02").body should be (Json.parse(
+          """
+            {
+              "items": [
+                {
+                  "name": "East Road",
+                  "location": {
+                    "lat": 3.03,
+                    "long": 40.01
+                  },
+                  "availableBikeCount": 1
+                }
+              ]
+            }
+          """))
+        PUT("/station/1000001") {"""{
+                                   "name": "First Avenue",
+                                   "location": {
+                                     "lat": 3.05,
+                                     "long": 40.00
+                                   },
+                                   "availableBikes": [
+                                     "006", "007", "008", "009", "010"
+                                   ]
+                                 }"""}
+        GET("/station/near/3.04/40.02").body should be (Json.parse(
+          """
+            {
+              "items": [
+                {
+                  "name": "East Road",
+                  "location": {
+                    "lat": 3.03,
+                    "long": 40.01
+                  },
+                  "availableBikeCount": 1
+                },
+                {
+                  "name": "First Avenue",
+                  "location": {
+                    "lat": 3.05,
+                    "long": 40.00
+                  },
+                  "availableBikeCount": 5
+                }
+              ]
+            }
+          """))
+      }
+    }
   }
+
+
   "POST /station/<station_id>/bike" - {
     "Requests hire of a bike and returns a bike ID" in {}
   }
