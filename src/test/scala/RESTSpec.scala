@@ -137,7 +137,8 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                     "lat": 3.03,
                     "long": 40.01
                   },
-                  "availableBikeCount": 1
+                  "availableBikeCount": 1,
+                  "hireUrl": "/station/67890/bike"
                 }
               ]
             }
@@ -162,7 +163,8 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                     "lat": 3.03,
                     "long": 40.01
                   },
-                  "availableBikeCount": 1
+                  "availableBikeCount": 1,
+                  "hireUrl": "/station/67890/bike"
                 },
                 {
                   "name": "First Avenue",
@@ -170,7 +172,8 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                     "lat": 3.05,
                     "long": 40.01
                   },
-                  "availableBikeCount": 5
+                  "availableBikeCount": 5,
+                  "hireUrl": "/station/1000001/bike"
                 }
               ]
             }
