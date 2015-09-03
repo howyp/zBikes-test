@@ -262,6 +262,26 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
           """
         } should have ('code (404))
       }
+      "Returns 409 if the bike ID is not currently hired" in {
+        POST("/station/12345/bike/008") {
+          """
+            {
+              "action": "return",
+              "username": "badrida382"
+            }
+          """
+        } should have ('code (409))
+      }
+      "Returns 403 if the bike ID is hired by someone else" in {
+        POST("/station/12345/bike/001") {
+          """
+            {
+              "action": "return",
+              "username": "pedalpushr"
+            }
+          """
+        } should have ('code (403))
+      }
     }
   }
 
