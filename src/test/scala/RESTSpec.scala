@@ -1,6 +1,9 @@
+import java.io.InputStream
+
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
 
 import scalaj.http._
 
@@ -138,6 +141,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                     "long": 40.01
                   },
                   "availableBikeCount": 1,
+                  "selfUrl": "/station/67890",
                   "hireUrl": "/station/67890/bike"
                 }
               ]
@@ -164,6 +168,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                     "long": 40.01
                   },
                   "availableBikeCount": 1,
+                  "selfUrl": "/station/67890",
                   "hireUrl": "/station/67890/bike"
                 },
                 {
@@ -173,6 +178,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                     "long": 40.01
                   },
                   "availableBikeCount": 5,
+                  "selfUrl": "/station/1000001",
                   "hireUrl": "/station/1000001/bike"
                 }
               ]
@@ -188,32 +194,110 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
           """))
       }
     }
+    "POST /station/<station_id>/bike" - {
+      "Requests hire of a bike and returns a bike ID" in {
+        val (selfUrl, hireUrl) = (GET("/station/near/3.04/40.02").body \ "items")(1).as(tupleOfUrls)
+        val resp = POST(hireUrl) {
+          """
+            {
+              "action": "hire",
+              "username": "badrida382"
+            }
+          """
+        }
+        resp should have ('code (200))
+        resp.body should be (Json.parse("""{ "bikeId": "006" }"""))
+        (GET(selfUrl).body \ "availableBikes").get should be (Json.parse("""["007","008","009","010"]"""))
+      }
+      "Returns bike IDs in order and a 404 if no bikes are available" in {
+        (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""["001","003"]"""))
+        POST("/station/12345/bike") {
+          """
+            {
+              "action": "hire",
+              "username": "badrida382"
+            }
+          """
+        }.body should be(Json.parse( """{ "bikeId": "001" }"""))
+        POST("/station/12345/bike") {
+          """
+            {
+              "action": "hire",
+              "username": "badrida382"
+            }
+          """
+        }.body should be(Json.parse( """{ "bikeId": "003" }"""))
+      }
+      "Returns 404 if no bikes are available" in {
+        (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""[]"""))
+        POST("/station/12345/bike") {
+          """
+            {
+              "action": "hire",
+              "username": "badrida382"
+            }
+          """
+        } should have ('code (404))
+      }
+    }
+    "POST /station/<station_id>/bike/<bike_id>" - {
+      "Notifies hire completed for a bike that is currently hired out" in {
+        POST("/station/12345/bike/006") {
+          """
+            {
+              "action": "return",
+              "username": "badrida382"
+            }
+          """
+        } should have ('code (200))
+        (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""["006"]"""))
+      }
+      "Returns 404 if the bike ID is unknown" in {
+        POST("/station/12345/bike/999") {
+          """
+            {
+              "action": "return",
+              "username": "badrida382"
+            }
+          """
+        } should have ('code (404))
+      }
+    }
   }
 
 
-  "POST /station/<station_id>/bike" - {
-    "Requests hire of a bike and returns a bike ID" in {}
-  }
-  "POST /station/<station_id>/bike/<bike_id>" - {
-    "Notifies hire completed" in {}
-  }
   "GET /station/depleted" - {
     "List locations with low number of bikes, together with near locations that have many bikes (ie. candidates for balancing)" in {}
   }
 
   def GET(url: String): HttpResponse[JsObject] =
     Http("http://localhost:9000" + url)
-      .execute(is => Json.parse(HttpConstants.readString(is)).as[JsObject])
+      .execute(parseBodyAsJson)
 
-  def DELETE(url: String): HttpResponse[String] =
+  def DELETE(url: String): HttpResponse[JsObject] =
     Http("http://localhost:9000" + url)
       .method("DELETE")
-      .asString
+      .execute(parseBodyAsJson)
 
-  def PUT(url: String)(json: String): HttpResponse[String] =
+  def PUT(url: String)(json: String): HttpResponse[JsObject] =
     Http("http://localhost:9000" + url)
       .postData(json)
       .header("Content-Type", "application/json")
       .method("PUT")
-      .asString
+      .execute(parseBodyAsJson)
+
+  def POST(url: String)(json: String): HttpResponse[JsObject] =
+    Http("http://localhost:9000" + url)
+      .postData(json)
+      .header("Content-Type", "application/json")
+      .method("POST")
+      .execute(parseBodyAsJson)
+
+  def parseBodyAsJson(is: InputStream): JsObject = {
+    HttpConstants.readString(is) match {
+      case ""    => Json.obj()
+      case other => Json.parse(other).as[JsObject]
+    }
+  }
+  val tupleOfUrls = ((__ \ "selfUrl").read[String] and (__ \ "hireUrl").read[String]).tupled
 }
