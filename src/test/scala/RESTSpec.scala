@@ -5,6 +5,11 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 import scalaj.http._
 
 class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
+  "DELETE /station/all" - {
+    "Remove all stations" in {
+      DELETE("/station/all") should have ('code (200))
+    }
+  }
   """
     |AS a maintenance engineer
     |I WANT to add a location and set the bikes that it has
@@ -141,7 +146,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                                    "name": "First Avenue",
                                    "location": {
                                      "lat": 3.05,
-                                     "long": 40.00
+                                     "long": 40.01
                                    },
                                    "availableBikes": [
                                      "006", "007", "008", "009", "010"
@@ -163,11 +168,19 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
                   "name": "First Avenue",
                   "location": {
                     "lat": 3.05,
-                    "long": 40.00
+                    "long": 40.01
                   },
                   "availableBikeCount": 5
                 }
               ]
+            }
+          """))
+      }
+      "Return an empty listing when there are no stations within 0.01 deg of current location" in {
+        GET("/station/near/1.00/5.00").body should be (Json.parse(
+          """
+            {
+              "items": []
             }
           """))
       }
@@ -188,6 +201,11 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
   def GET(url: String): HttpResponse[JsObject] =
     Http("http://localhost:9000" + url)
       .execute(is => Json.parse(HttpConstants.readString(is)).as[JsObject])
+
+  def DELETE(url: String): HttpResponse[String] =
+    Http("http://localhost:9000" + url)
+      .method("DELETE")
+      .asString
 
   def PUT(url: String)(json: String): HttpResponse[String] =
     Http("http://localhost:9000" + url)
