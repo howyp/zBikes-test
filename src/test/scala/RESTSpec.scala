@@ -326,23 +326,53 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
   }
 
   """
-    |AS an accountant
-    |I WANT to send a push notification to customers who hire bikes for more than 1 hour
-    |SO THAT the bikes are fairly shared around
-  """.stripMargin - {
-  }
-
-  """
     |AS a maintenance engineer
     |I WANT to know which bikes to re-locate
     |SO THAT bikes are available at all stations
   """.stripMargin - {
-
-  }
-
-
-  "GET /station/depleted" - {
-    "List locations with low number of bikes, together with near locations that have many bikes (ie. candidates for balancing)" in {}
+    "DELETE /station/all" - {
+      "Remove all stations" in {
+        DELETE("/station/all") should have ('code (200))
+      }
+    }
+    "GET /station/depleted" - {
+      "List locations with low number of bikes, together with near locations that have many bikes (ie. candidates for balancing)" in {
+        PUT("/station/2001") {"""{
+                                    "name": "Loadsa Bikes",
+                                    "location": {
+                                      "lat": 2.10,
+                                      "long": 45.4
+                                    },
+                                    "availableBikes": [
+                                      "100","101","102","103","104","105","106","107","108","109",
+                                      "110","111","112","113","114","115","116","117","118","119",
+                                      "120","121","122","123","124","125","126","127","128","129"
+                                    ]
+                                  }"""}
+        PUT("/station/2002") {"""{
+                                    "name": "Few bikes",
+                                    "location": {
+                                      "lat": 2.15,
+                                      "long": 45.4
+                                    },
+                                    "availableBikes": [
+                                      "190","191","192"
+                                    ]
+                                  }"""}
+        GET("/station/depleted").body should be (Json.parse(
+          """
+            {
+              "items": [
+                {
+                  "stationUrl": "/station/2002",
+                  "availableBikes": 3
+                }
+              ]
+            }
+          """))
+      }
+      "Not list locations with more than 10% of all available bikes" in pending
+    }
   }
 
   def GET(url: String): HttpResponse[JsObject] =
