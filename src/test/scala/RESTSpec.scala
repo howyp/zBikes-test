@@ -1,5 +1,9 @@
 import java.io.InputStream
 
+import com.github.tomakehurst.wiremock._
+import com.github.tomakehurst.wiremock.client.WireMock
+import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json._
@@ -7,12 +11,13 @@ import play.api.libs.functional.syntax._
 
 import scalaj.http._
 
-class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
+class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAfterAll {
   "DELETE /station/all" - {
     "Remove all stations" in {
       DELETE("/station/all") should have ('code (200))
     }
   }
+
   """
     |AS a maintenance engineer
     |I WANT to add a location and set the bikes that it has
@@ -103,6 +108,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
       }
     }
   }
+
   """
     |AS a customer
     |I WANT to hire a bike near to me, and return it to a different location
@@ -197,6 +203,22 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
     "POST /station/<station_id>/bike" - {
       "Requests hire of a bike and returns a bike ID" in {
         val (selfUrl, hireUrl) = (GET("/station/near/3.04/40.02").body \ "items")(1).as(tupleOfUrls)
+        stubFor(
+          get(urlEqualTo("/customer/badrida382"))
+          .willReturn(
+              aResponse()
+              .withStatus(200)
+              .withHeader("Content-Type", "application/json")
+              .withBody(
+                """
+                  {
+                    "username": "badrida382",
+                    "firstname": "Joe",
+                    "lastname": "Bloggs"
+                  }
+                """)
+            )
+        )
         val resp = POST(hireUrl) {
           """
             {
@@ -238,6 +260,24 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
             }
           """
         } should have ('code (404))
+      }
+      "Returns 401 if GET /customer/<username> indicates that the customer is unauthorised" in {
+        (GET("/station/67890").body \ "availableBikes").get should be (Json.parse("""["005"]"""))
+        stubFor(
+          get(urlEqualTo("/customer/i_am_not_authorised"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+        POST("/station/67890/bike") {
+          """
+            {
+              "action": "hire",
+              "username": "i_am_not_authorised"
+            }
+          """
+        } should have ('code (401))
       }
     }
     "POST /station/<station_id>/bike/<bike_id>" - {
@@ -285,6 +325,21 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
     }
   }
 
+  """
+    |AS an accountant
+    |I WANT to send a push notification to customers who hire bikes for more than 1 hour
+    |SO THAT the bikes are fairly shared around
+  """.stripMargin - {
+  }
+
+  """
+    |AS a maintenance engineer
+    |I WANT to know which bikes to re-locate
+    |SO THAT bikes are available at all stations
+  """.stripMargin - {
+
+  }
+
 
   "GET /station/depleted" - {
     "List locations with low number of bikes, together with near locations that have many bikes (ie. candidates for balancing)" in {}
@@ -320,4 +375,18 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures {
     }
   }
   val tupleOfUrls = ((__ \ "selfUrl").read[String] and (__ \ "hireUrl").read[String]).tupled
+
+
+  val Port = 9005
+  val Host = "localhost"
+  val wireMockServer = new WireMockServer(wireMockConfig().port(Port))
+
+  override def beforeAll {
+    wireMockServer.start()
+    WireMock.configureFor(Host, Port)
+  }
+
+  override def afterAll {
+    wireMockServer.stop()
+  }
 }

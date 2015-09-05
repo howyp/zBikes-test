@@ -9,3 +9,5 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.4" % "test"
 libraryDependencies += "org.scalaj" %% "scalaj-http" % "1.1.5" % "test"
 
 libraryDependencies += "com.typesafe.play" %% "play-json" % "2.4.2" % "test"
+
+libraryDependencies += "com.github.tomakehurst" % "wiremock" % "1.57"
