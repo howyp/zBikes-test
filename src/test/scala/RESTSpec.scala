@@ -340,7 +340,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
         PUT("/station/2001") {"""{
                                     "name": "Loadsa Bikes",
                                     "location": {
-                                      "lat": 2.10,
+                                      "lat": 2.16,
                                       "long": 45.4
                                     },
                                     "availableBikes": [
@@ -365,7 +365,13 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
               "items": [
                 {
                   "stationUrl": "/station/2002",
-                  "availableBikes": 3
+                  "availableBikes": 3,
+                  "nearbyFullStations" : [
+                    {
+                      "stationUrl": "/station/2001",
+                      "availableBikes": 30
+                    }
+                  ]
                 }
               ]
             }
