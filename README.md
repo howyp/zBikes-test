@@ -4,9 +4,9 @@ zBikes test kit
 Running
 -------
 
-Download an assembled jar from [here](http://todo.com) and then in the same folder run:
+Download an assembled jar from [here](https://github.com/zuhlke-days-2015/zBikes-test/releases/latest) and then in the same folder run:
 
 ```
-  java -jar zBikes-test-assembly-1.0.jar
+  java -jar zBikes-test-assembly-*.jar
 ```
 
