@@ -1,5 +1,5 @@
-import java.io.InputStream
 
+import java.io.InputStream
 import com.github.tomakehurst.wiremock._
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
