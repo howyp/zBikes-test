@@ -231,7 +231,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
         resp.body should be (Json.parse("""{ "bikeId": "006" }"""))
         (GET(selfUrl).body \ "availableBikes").get should be (Json.parse("""["007","008","009","010"]"""))
       }
-      "Returns bike IDs in order and a 404 if no bikes are available" in {
+      "Returns bike IDs in order" in {
         (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""["001","003"]"""))
         POST("/station/12345/bike") {
           """
@@ -259,7 +259,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
               "username": "badrida382"
             }
           """
-        } should have ('code (404))
+        } should (have ('code (404)) or have ('code (204)))
       }
       "Returns 401 if GET /customer/<username> indicates that the customer is unauthorised" in {
         (GET("/station/67890").body \ "availableBikes").get should be (Json.parse("""["005"]"""))
