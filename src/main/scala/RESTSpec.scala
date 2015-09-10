@@ -6,10 +6,11 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
 
 import scalaj.http._
+
+import spray.json._
+import DefaultJsonProtocol._
 
 class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAfterAll {
   "DELETE /station/all" - {
@@ -38,7 +39,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
         resp should (have('code(200)) or have ('code (201)))
         resp.headers should contain ("Location" -> "/station/12345")
 
-        GET(resp.headers("Location")).body should be(Json.parse("""{
+        GET(resp.headers("Location")).body should be("""{
                                      "name": "West Road",
                                      "location": {
                                        "lat": 3.20,
@@ -47,10 +48,10 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                      "availableBikes": [
                                        "001","002","003","004"
                                      ]
-                                   }"""))
+                                   }""".parseJson)
       }
       "Update an existing station with new details" in {
-        GET("/station/12345").body should be(Json.parse("""{
+        GET("/station/12345").body should be("""{
                                      "name": "West Road",
                                      "location": {
                                        "lat": 3.20,
@@ -59,7 +60,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                      "availableBikes": [
                                        "001","002","003","004"
                                      ]
-                                   }"""))
+                                   }""".parseJson)
         val resp = PUT("/station/12345") {"""{
                                                "name": "South Road",
                                                "location": {
@@ -71,7 +72,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                                ]
                                              }"""}
         resp should (have('code(200)) or have ('code (201)))
-        GET("/station/12345").body should be(Json.parse("""{
+        GET("/station/12345").body should be("""{
                                                            "name": "South Road",
                                                            "location": {
                                                              "lat": 3.23,
@@ -80,10 +81,10 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                                            "availableBikes": [
                                                              "001","003","005"
                                                            ]
-                                                         }"""))
+                                                         }""".parseJson)
       }
       "Remove given bike IDs from other stations" in {
-        GET("/station/12345").body should be(Json.parse("""{
+        GET("/station/12345").body should be("""{
                                                            "name": "South Road",
                                                            "location": {
                                                              "lat": 3.23,
@@ -92,7 +93,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                                            "availableBikes": [
                                                              "001","003","005"
                                                            ]
-                                                         }"""))
+                                                         }""".parseJson)
         PUT("/station/67890") {"""{
                                    "name": "East Road",
                                    "location": {
@@ -103,8 +104,8 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                      "005"
                                    ]
                                  }"""} should (have('code(200)) or have ('code (201)))
-        (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""["001","003"]"""))
-        (GET("/station/67890").body \ "availableBikes").get should be (Json.parse("""["005"]"""))
+        GET("/station/12345").body.fields("availableBikes") should be ("""["001","003"]""".parseJson)
+        GET("/station/67890").body.fields("availableBikes") should be( """["005"]""".parseJson)
       }
     }
   }
@@ -116,7 +117,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
   """.stripMargin - {
     "GET /station/near/<lat>/<long>" - {
       "List locations within 0.01 deg of current location, with count of bikes per station" in {
-        GET("/station/12345").body should be(Json.parse("""{
+        GET("/station/12345").body should be("""{
                                                            "name": "South Road",
                                                            "location": {
                                                              "lat": 3.23,
@@ -125,8 +126,8 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                                            "availableBikes": [
                                                              "001","003"
                                                            ]
-                                                         }"""))
-        GET("/station/67890").body should be(Json.parse("""{
+                                                         }""".parseJson)
+        GET("/station/67890").body should be("""{
                                                            "name": "East Road",
                                                            "location": {
                                                              "lat": 3.03,
@@ -135,8 +136,8 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                                            "availableBikes": [
                                                              "005"
                                                            ]
-                                                         }"""))
-        GET("/station/near/3.04/40.02").body should be (Json.parse(
+                                                         }""".parseJson)
+        GET("/station/near/3.04/40.02").body should be (
           """
             {
               "items": [
@@ -152,7 +153,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                 }
               ]
             }
-          """))
+          """.parseJson)
         PUT("/station/1000001") {"""{
                                    "name": "First Avenue",
                                    "location": {
@@ -163,7 +164,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                      "006", "007", "008", "009", "010"
                                    ]
                                  }"""}
-        GET("/station/near/3.04/40.02").body should be (Json.parse(
+        GET("/station/near/3.04/40.02").body should be (
           """
             {
               "items": [
@@ -189,20 +190,20 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                 }
               ]
             }
-          """))
+          """.parseJson)
       }
       "Return an empty listing when there are no stations within 0.01 deg of current location" in {
-        GET("/station/near/1.00/5.00").body should be (Json.parse(
+        GET("/station/near/1.00/5.00").body should be (
           """
             {
               "items": []
             }
-          """))
+          """.parseJson)
       }
     }
     "POST /station/<station_id>/bike" - {
       "Requests hire of a bike and returns a bike ID" in {
-        val (selfUrl, hireUrl) = (GET("/station/near/3.04/40.02").body \ "items")(1).as(tupleOfUrls)
+        val (selfUrl, hireUrl) = tupleOfUrls(GET("/station/near/3.04/40.02").body.fields("items").convertTo[JsArray].elements(1))
         stubFor(
           get(urlEqualTo("/customer/badrida382"))
           .willReturn(
@@ -216,9 +217,9 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                     "firstname": "Joe",
                     "lastname": "Bloggs"
                   }
-                """)
+                """
             )
-        )
+        ))
         val resp = POST(hireUrl) {
           """
             {
@@ -228,11 +229,11 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
           """
         }
         resp should have ('code (200))
-        resp.body should be (Json.parse("""{ "bikeId": "006" }"""))
-        (GET(selfUrl).body \ "availableBikes").get should be (Json.parse("""["007","008","009","010"]"""))
+        resp.body should be ("""{ "bikeId": "006" }""".parseJson)
+        GET(selfUrl).body.fields("availableBikes") should be ("""["007","008","009","010"]""".parseJson)
       }
       "Returns bike IDs in order" in {
-        (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""["001","003"]"""))
+        GET("/station/12345").body.fields("availableBikes") should be ("""["001","003"]""".parseJson)
         POST("/station/12345/bike") {
           """
             {
@@ -240,7 +241,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
               "username": "badrida382"
             }
           """
-        }.body should be(Json.parse( """{ "bikeId": "001" }"""))
+        }.body should be( """{ "bikeId": "001" }""".parseJson)
         POST("/station/12345/bike") {
           """
             {
@@ -248,10 +249,10 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
               "username": "badrida382"
             }
           """
-        }.body should be(Json.parse( """{ "bikeId": "003" }"""))
+        }.body should be( """{ "bikeId": "003" }""".parseJson)
       }
       "Returns 404 if no bikes are available" in {
-        (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""[]"""))
+        GET("/station/12345").body.fields("availableBikes") should be ("""[]""".parseJson)
         POST("/station/12345/bike") {
           """
             {
@@ -262,7 +263,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
         } should (have ('code (404)) or have ('code (204)))
       }
       "Returns 401 if GET /customer/<username> indicates that the customer is unauthorised" in {
-        (GET("/station/67890").body \ "availableBikes").get should be (Json.parse("""["005"]"""))
+        GET("/station/67890").body.fields("availableBikes") should be ("""["005"]""".parseJson)
         stubFor(
           get(urlEqualTo("/customer/i_am_not_authorised"))
             .willReturn(
@@ -290,7 +291,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
             }
           """
         } should have ('code (200))
-        (GET("/station/12345").body \ "availableBikes").get should be (Json.parse("""["006"]"""))
+        GET("/station/12345").body.fields("availableBikes") should be ("""["006"]""".parseJson)
       }
       "Returns 404 if the bike ID is unknown" in {
         POST("/station/12345/bike/999") {
@@ -359,7 +360,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                       "190","191","192"
                                     ]
                                   }"""}
-        GET("/station/depleted").body should be (Json.parse(
+        GET("/station/depleted").body should be (
           """
             {
               "items": [
@@ -375,7 +376,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                 }
               ]
             }
-          """))
+          """.parseJson)
       }
       "Not list locations with more than 10% of all available bikes" in pending
     }
@@ -406,12 +407,13 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
 
   def parseBodyAsJson(is: InputStream): JsObject = {
     HttpConstants.readString(is) match {
-      case ""    => Json.obj()
-      case other => Json.parse(other).as[JsObject]
+      case ""    => JsObject()
+      case other => other.parseJson.asJsObject
     }
   }
-  val tupleOfUrls = ((__ \ "selfUrl").read[String] and (__ \ "hireUrl").read[String]).tupled
-
+  def tupleOfUrls(body: JsValue): (String, String) = body.asJsObject.getFields("selfUrl", "hireUrl") match {
+    case Seq(JsString(selfUrl), JsString(hireUrl)) => (selfUrl, hireUrl)
+  }
 
   val Port = 9005
   val Host = "localhost"
