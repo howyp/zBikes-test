@@ -37,7 +37,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                                ]
                                              }"""}
         resp should (have('code(200)) or have ('code (201)))
-        resp.headers should contain ("Location" -> "/station/12345")
+        resp.headers.get("Location").get should endWith ("/station/12345")
 
         GET(resp.headers("Location")).body should be("""{
                                      "name": "West Road",
@@ -382,9 +382,14 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
     }
   }
 
-  def GET(url: String): HttpResponse[JsObject] =
-    Http("http://localhost:9000" + url)
-      .execute(parseBodyAsJson)
+  def GET(url: String): HttpResponse[JsObject] = {
+    val request: HttpRequest = if (url.startsWith("http")) {
+      Http(url)
+    } else {
+      Http("http://localhost:9000" + url)
+    }
+    request.execute(parseBodyAsJson)
+  }
 
   def DELETE(url: String): HttpResponse[JsObject] =
     Http("http://localhost:9000" + url)
