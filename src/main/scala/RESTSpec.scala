@@ -350,11 +350,12 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
 
     def `should respond with`(matcher: Matcher[HttpResponse[String]]) = {
       val response = req.asString
+      val reqBodySuffix = reqBody.map(s => " " + s.parseJson).getOrElse("")
       val attemptSuffix = attempt match {
         case -1 => ""
         case other => s" - Attempt $other"
       }
-      s"$method $url$attemptSuffix" in { response should matcher }
+      s"$method $url$reqBodySuffix$attemptSuffix" in { response should matcher }
       response
     }
   }
@@ -381,13 +382,13 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
   def body(expected: String) = Matcher[HttpResponse[String]] { case r@ HttpResponse(actual, _, _) =>
     val expectedJ = expected.parseJson
     actual match {
-      case "" => MatchResult(false, s"Response body was empty, expected ${expectedJ}", "")
+      case "" => MatchResult(false, s"Response body was empty, expected $expectedJ", "")
       case other => Try(other.parseJson.asJsObject) match {
         case Failure(_) => MatchResult(false, s"Response body '${other.take(20)}...' was not JSON", "")
         case Success(actualJ) => MatchResult(
           matches = actualJ == expectedJ,
-          rawFailureMessage = s"Response body $actualJ was not ${expectedJ}",
-          rawNegatedFailureMessage = s"Response body was not ${expectedJ}"
+          rawFailureMessage = s"Response body:\n$actualJ\n  was not:\n$expectedJ",
+          rawNegatedFailureMessage = s"Response body was not $expectedJ"
         )
       }
     }
@@ -396,13 +397,13 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
   def bodyProperty(name: String, expected: String) = Matcher[HttpResponse[String]] { case r@ HttpResponse(actual, _, _) =>
     val expectedJ = expected.parseJson
     actual match {
-      case "" => MatchResult(false, s"Response body was empty, not ${expectedJ} at property $name", "")
+      case "" => MatchResult(false, s"Response body was empty, not $expectedJ at property $name", "")
       case other => Try(other.parseJson.asJsObject).map(j => (j.fields.get(name), j)) match {
-        case Failure(_) => MatchResult(false, s"Response body '${other.take(20)}...' was not JSON, expected ${expectedJ} at property $name", "")
-        case Success((None, wholeBody)) => MatchResult(false, s"Response body $wholeBody was not JSON, expected ${expectedJ} at property $name", "")
+        case Failure(_) => MatchResult(false, s"Response body '${other.take(20)}...' was not JSON, expected $expectedJ at property $name", "")
+        case Success((None, wholeBody)) => MatchResult(false, s"Response body $wholeBody was not JSON, expected $expectedJ at property $name", "")
         case Success((Some(fieldValue), wholeBody)) => MatchResult(
           matches = fieldValue == expectedJ,
-          rawFailureMessage = s"Response body $wholeBody was not ${expectedJ} at property $name",
+          rawFailureMessage = s"Response body $wholeBody was not $expectedJ at property $name",
           rawNegatedFailureMessage = s"negated matching not supported"
         )
       }
