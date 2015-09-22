@@ -4,9 +4,11 @@ import com.github.tomakehurst.wiremock._
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
+import org.scalactic.Fail
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 
+import scala.util.{Failure, Success, Try}
 import scalaj.http._
 
 import spray.json._
@@ -383,39 +385,48 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
   }
 
   def GET(url: String): HttpResponse[JsObject] = {
-    val request: HttpRequest = if (url.startsWith("http")) {
-      Http(url)
-    } else {
-      Http("http://localhost:9000" + url)
-    }
+    info(s"GET $url")
+    val request =
+      if (url.startsWith("http")) Http(url)
+      else Http("http://localhost:9000" + url)
     request.execute(parseBodyAsJson)
   }
 
-  def DELETE(url: String): HttpResponse[JsObject] =
+  def DELETE(url: String): HttpResponse[JsObject] = {
+    info(s"DELETE $url")
     Http("http://localhost:9000" + url)
       .method("DELETE")
       .execute(parseBodyAsJson)
+  }
 
-  def PUT(url: String)(json: String): HttpResponse[JsObject] =
+  def PUT(url: String)(json: String): HttpResponse[JsObject] = {
+    info(s"PUT $url ${json.parseJson}")
     Http("http://localhost:9000" + url)
       .postData(json)
       .header("Content-Type", "application/json")
       .method("PUT")
       .execute(parseBodyAsJson)
+  }
 
-  def POST(url: String)(json: String): HttpResponse[JsObject] =
+  def POST(url: String)(json: String): HttpResponse[JsObject] = {
+    info(s"POST $url ${json.parseJson}")
     Http("http://localhost:9000" + url)
       .postData(json)
       .header("Content-Type", "application/json")
       .method("POST")
       .execute(parseBodyAsJson)
-
-  def parseBodyAsJson(is: InputStream): JsObject = {
-    HttpConstants.readString(is) match {
-      case ""    => JsObject()
-      case other => other.parseJson.asJsObject
-    }
   }
+
+  def parseBodyAsJson(is: InputStream): JsObject =
+    Try(HttpConstants.readString(is))
+      .map {
+        case "" => JsObject()
+        case other => other.parseJson.asJsObject
+      } match {
+        case Failure(exception) => fail(s"Could not parse JSON from response: ${exception.getMessage}")
+        case Success(json) => json
+      }
+
   def tupleOfUrls(body: JsValue): (String, String) = body.asJsObject.getFields("selfUrl", "hireUrl") match {
     case Seq(JsString(selfUrl), JsString(hireUrl)) => (selfUrl, hireUrl)
   }
