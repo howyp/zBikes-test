@@ -147,7 +147,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                    "availableBikes": [
                                      "006", "007", "008", "009", "010"
                                    ]
-                                 }""")  `should respond with` `status code`(200)
+                                 }""")  `should respond with` (`status code`(200) or `status code` (201))
         GET("/station/near/3.04/40.019999999") `should respond with` (`status code`(200) and body(
           """
             {
@@ -301,7 +301,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                       "110","111","112","113","114","115","116","117","118","119",
                                       "120","121","122","123","124","125","126","127","128","129"
                                     ]
-                                  }"""}  `should respond with` `status code`(200)
+                                  }"""}  `should respond with` (`status code` (200) or `status code` (201))
         PUT("/station/2002") {"""{
                                     "name": "Few bikes",
                                     "location": {
@@ -311,7 +311,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
                                     "availableBikes": [
                                       "190","191","192"
                                     ]
-                                  }"""}  `should respond with` `status code`(200)
+                                  }"""}  `should respond with` (`status code` (200) or `status code` (201))
         GET("/station/depleted") `should respond with` (`status code`(200) and body (
           """
             {
