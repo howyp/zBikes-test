@@ -383,7 +383,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
     val expectedJ = expected.parseJson
     actual match {
       case "" => MatchResult(false, s"Response body was empty, expected $expectedJ", "")
-      case other => Try(other.parseJson.asJsObject) match {
+      case other => Try(other.parseJson) match {
         case Failure(_) => MatchResult(false, s"Response body '${other.take(20)}...' was not JSON", "")
         case Success(actualJ) => MatchResult(
           matches = actualJ == expectedJ,
@@ -399,7 +399,7 @@ class RESTSpec extends FreeSpec with Matchers with ScalaFutures with BeforeAndAf
     actual match {
       case "" => MatchResult(false, s"Response body was empty, not $expectedJ at property $name", "")
       case other => Try(other.parseJson.asJsObject).map(j => (j.fields.get(name), j)) match {
-        case Failure(_) => MatchResult(false, s"Response body '${other.take(20)}...' was not JSON, expected $expectedJ at property $name", "")
+        case Failure(_) => MatchResult(false, s"Response body '${other.take(20)}...' was not a JSON object, expected $expectedJ at property $name", "")
         case Success((None, wholeBody)) => MatchResult(false, s"Response body $wholeBody was not JSON, expected $expectedJ at property $name", "")
         case Success((Some(fieldValue), wholeBody)) => MatchResult(
           matches = fieldValue == expectedJ,
